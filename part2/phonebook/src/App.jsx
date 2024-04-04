@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Person from './components/Person'
-import axios from 'axios'
+import personService from './services/persons'
 
 const App = () => {
   const [persons, setPersons] = useState([])
@@ -12,11 +12,11 @@ const App = () => {
   const [filteredPersons, setFilteredPersons] = useState(persons)
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data)
-        setFilteredPersons(response.data)
+    personService
+      .getAll()
+      .then(initialData => {
+        setPersons(initialData)
+        setFilteredPersons(initialData)
       })
   }, [])
   console.log('render', persons.length, 'persons')
@@ -27,28 +27,63 @@ const App = () => {
     function nameExists() {
       // some() iterative method, return true if (at least) one element passes the test
       const nameExists = (person) => person.name === newName
-      console.log("nameExists result", persons.some(nameExists))
       return persons.some(nameExists)
     }
     // if newName exists already in persons, alert
     if (nameExists() === true) {
-      console.log("name exists")
-      alert(`${newName} is already added to phonebook`)
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        // find right person object and change number property
+        const person = persons.find(p => p.name === newName)
+        console.log("person found", person)
+        const changedPerson = { ...person, number: newNumber }
+        // put changedPerson with updated number to server
+        personService
+          .replaceNumber(person.id, changedPerson)
+          .then(returnedPerson => {
+            console.log("returned person", returnedPerson)
+            const updatedPersons = persons.map(p => p.id !== person.id ? p : returnedPerson)
+            setPersons(updatedPersons)
+            setFilteredPersons(updatedPersons)
+            setSearchValue('')
+          })
+      }
     }
     // if newName doesn't exist in persons, add it
     else {
       const personObject = {
         name: newName,
         number: newNumber,
-        id: persons.length + 1,
+        //id: persons.length + 1,
         }
-      setPersons(persons.concat(personObject))
-      setNewName('')
-      setNewNumber('')
-      // update filteredPersons too and empty search input
-      // otherwise adding a person does not update filtered persons and would not be rendered
-      setSearchValue('')
-      setFilteredPersons(persons.concat(personObject))
+
+      personService
+        .create(personObject)
+        .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+          setNewName('')
+          setNewNumber('')
+          // update filteredPersons too and empty search input
+          // otherwise adding a person does not update filtered persons and would not be rendered
+          setSearchValue('')
+          setFilteredPersons(persons.concat(returnedPerson))
+        })
+    }
+  }
+
+  const deletePersonOf = (id) => {
+    const person = persons.find(p => p.id === id)
+
+    if (window.confirm(`Delete ${person.name}?`)) {
+      personService
+        .deletePerson(id)
+        .then((returnedPerson) => {
+          console.log("deleted", returnedPerson)
+          // set persons states without the deleted one
+          const personsAfterDeletion = persons.filter(person => person.id !== id)
+          setPersons(personsAfterDeletion)
+          setFilteredPersons(personsAfterDeletion)
+          setSearchValue('')
+        })
     }
   }
 
@@ -84,7 +119,12 @@ const App = () => {
       <h2>Numbers</h2>
       <div>
         {filteredPersons.map(person =>
-          <Person key={person.id} person={person.name} number={person.number} />
+          <Person
+            person={person.name}
+            number={person.number}
+            key={person.id}
+            deletePerson={() => deletePersonOf(person.id)}
+          />
           )}
       </div>
     </div>
