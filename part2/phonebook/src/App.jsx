@@ -3,6 +3,7 @@ import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Person from './components/Person'
 import personService from './services/persons'
+import Notification from './components/Notification'
 
 const App = () => {
   const [persons, setPersons] = useState([])
@@ -10,6 +11,8 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [filteredPersons, setFilteredPersons] = useState(persons)
+  const [notificationMessage, setNotificationMessage] = useState(null)
+  const [notificationClassName, setNotificationClassName] = useState('notification')
 
   useEffect(() => {
     personService
@@ -30,6 +33,7 @@ const App = () => {
       return persons.some(nameExists)
     }
     // if newName exists already in persons, alert
+    // change number of already existing person
     if (nameExists() === true) {
       if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
         // find right person object and change number property
@@ -45,6 +49,22 @@ const App = () => {
             setPersons(updatedPersons)
             setFilteredPersons(updatedPersons)
             setSearchValue('')
+            setNotificationMessage(`The number of ${newName} was updated`)
+            setTimeout(() => {
+              setNotificationMessage(null)
+            }, 5000)
+          })
+          .catch(error => {
+            setNotificationMessage(`Information of ${newName} has already been removed from server`)
+            setNotificationClassName('notification-error') // set classname so we can change style used
+            console.log("notif classname", notificationClassName)
+            setTimeout(() => {
+              setNotificationMessage(null)
+              setNotificationClassName('notification')
+            }, 5000)
+            const updatedPersons = persons.filter(p => p.id !== person.id)
+            setPersons(updatedPersons)
+            setFilteredPersons(updatedPersons)
           })
       }
     }
@@ -66,6 +86,10 @@ const App = () => {
           // otherwise adding a person does not update filtered persons and would not be rendered
           setSearchValue('')
           setFilteredPersons(persons.concat(returnedPerson))
+          setNotificationMessage(`${newName} was added to phonebook`)
+          setTimeout(() => {
+            setNotificationMessage(null)
+          }, 5000)
         })
     }
   }
@@ -83,6 +107,10 @@ const App = () => {
           setPersons(personsAfterDeletion)
           setFilteredPersons(personsAfterDeletion)
           setSearchValue('')
+          setNotificationMessage(`${person.name} was deleted from phonebook`)
+          setTimeout(() => {
+            setNotificationMessage(null)
+          }, 5000)
         })
     }
   }
@@ -112,11 +140,12 @@ const App = () => {
 
   return (
     <div>
-      <h2>Phonebook</h2>
-        <Filter searchValue={searchValue} handleSearchChange={handleSearchChange} />
-      <h2>Add a new person</h2>
-        <PersonForm addPerson={addPerson} searchValue={searchValue} newName={newName} handleNameChange={handleNameChange} newNumber={newNumber} handleNumberChange={handleNumberChange} />
-      <h2>Numbers</h2>
+      <h1>Phonebook</h1>
+      <Notification message={notificationMessage} notificationClassName={notificationClassName} />
+      <Filter searchValue={searchValue} handleSearchChange={handleSearchChange} />
+      <h1>Add a new person</h1>
+      <PersonForm addPerson={addPerson} searchValue={searchValue} newName={newName} handleNameChange={handleNameChange} newNumber={newNumber} handleNumberChange={handleNumberChange} />
+      <h1>Numbers</h1>
       <div>
         {filteredPersons.map(person =>
           <Person
