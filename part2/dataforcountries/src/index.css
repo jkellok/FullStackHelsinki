@@ -1,0 +1,14 @@
+.flag {
+    margin-top: 10px;
+    width: 30%;
+    height: 30%;
+}
+
+.weatherIcon {
+    width: 15%;
+    height: 15%;
+}
+
+button {
+    margin-left: 6px;
+}

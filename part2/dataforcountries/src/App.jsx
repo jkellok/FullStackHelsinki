@@ -1,72 +1,18 @@
 import { useState, useEffect } from 'react'
 import SearchBar from './components/SearchBar'
 import axios from 'axios'
-
-const MultipleCountriesNameDisplay = ({name}) => {
-  return (
-    <div>
-      {name}
-    </div>
-  )
-}
-
-const LanguageList = () => {
-  // put languagelist stuff here
-}
-
-const CountryFlag = (country) => {
-  console.log(country)
-  // render flag based on country code
-  return (
-    <div>
-
-    </div>
-  )
-}
-
-const CountryInfo = ({props}) => {
-  console.log("props", props[0])
-  // name in <h1>
-  // capital --
-  // area --
-  // languages: below in bold
-  // list of languages in bullet points
-  // flag of country
-  //console.log("test map", props[0].languages.map((a) => {
-  //  return a.languages
-  //}))
-  console.log("props name", props[0].name)
-  console.log("props languages", props[0].languages)
-  console.log("area", props[0].area)
-  console.log("capital", props[0].capital)
-  const languageList = Object.values(props[0].languages).map((language, index) => {
-    return (
-      <li key={index}>{language}</li>
-    )
-  })
-  console.log("languagelist", languageList)
-  console.log("flag", props[0].flag)
-
-  return (
-    <div>
-      <h1>{props[0].name.common}</h1>
-      <div>capital {props[0].capital}</div>
-      <div>area {props[0].area}</div>
-      <p/>
-      <div>
-        <strong>languages:</strong>
-        <ul>{languageList}</ul>
-      </div>
-    </div>
-  )
-}
+const api_key = import.meta.env.VITE_API_KEY
+import CountryInfo from './components/CountryInfo'
+import MultipleCountriesNameDisplay from './components/MultipleCountriesNameDisplay'
 
 function App() {
   const [countries, setCountries] = useState([])
   const [query, setQuery] = useState('')
   const [filteredCountries, setFilteredCountries] = useState(countries)
+  const [weatherData, setWeatherData] = useState([])
 
   useEffect(() => {
+    // set initial data to countries
     axios
       .get(`https://studies.cs.helsinki.fi/restcountries/api/all`)
       .then(response => {
@@ -77,16 +23,47 @@ function App() {
       })
   }, [])
 
+  useEffect(() => {
+    // get weather data for capital, only when one country viewed
+    if (filteredCountries.length === 1) {
+      const capital = filteredCountries[0].capital
+
+      axios
+      .get(`http://api.openweathermap.org/data/2.5/weather?q=${capital}&APPID=${api_key}`)
+      .then(response => {
+        // assign needed data and set into weatherData
+        const temperature = response.data.main.temp - 273.15 // Kelvin to Celsius
+        const temperatureRounded = temperature.toFixed(2)
+        const windSpeed = response.data.wind.speed
+        const weatherIcon = response.data.weather[0].icon
+        const weatherDescription = response.data.weather[0].description
+        const tempWeatherData = [temperatureRounded, weatherIcon, weatherDescription, windSpeed]
+        console.log("get temp weatherdata", tempWeatherData)
+        setWeatherData(tempWeatherData)
+      })
+      .catch(error => {
+        console.log("error happened", error)
+        const tempWeatherData = [null, null, null, null]
+        setWeatherData(tempWeatherData)
+      })
+
+      console.log("weatherdata", weatherData)
+    }
+  }, [filteredCountries])
+
   const handleQueryChange = (event) => {
-    console.log("in handlequerychange", event.target.value)
     setQuery(event.target.value)
-    // could have array with just the names?
     const filteringCountries = countries.filter(country => {
       return country.name.common.toLowerCase().includes(event.target.value.toLowerCase())
     })
-    console.log(filteringCountries)
-    console.log("filtered amount", filteringCountries.length)
     setFilteredCountries(filteringCountries)
+  }
+
+  const showSelectedOf = (country) => {
+    // when button next to country name is pressed, show that country view
+    let selectedCountry = [] // needs to be an array where length will be 1
+    selectedCountry.push(filteredCountries.find(c => c.name.common === country))
+    setFilteredCountries(selectedCountry)
   }
 
   return (
@@ -96,7 +73,7 @@ function App() {
         <>
         {filteredCountries.length === 1 ? (
           <div>
-            <CountryInfo props={filteredCountries} />
+            <CountryInfo props={filteredCountries} weatherData={weatherData} />
           </div>
         ) : (
           <div>
@@ -104,6 +81,7 @@ function App() {
               <MultipleCountriesNameDisplay
                 name={country.name.common}
                 key={country.name.common}
+                showSelected={() => showSelectedOf(country.name.common)}
               />
             )}
           </div>
